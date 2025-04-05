@@ -38,7 +38,7 @@
     </div>
   </div>
 
-  <div class="app-container" id="app-container">
+  <div class="app-container" id="app-container" style="display: none;">
     <header>
       <div class="logo">
         <span class="logo-icon">✓</span>
@@ -53,9 +53,9 @@
         </ul>
       </nav>
       <div class="user-profile">
-        <div class="user-avatar">JS</div>
+        <div class="user-avatar" id="user-avatar">JS</div>
         <div class="user-menu">
-          <span class="user-name">John Smith</span>
+          <span class="user-name" id="user-fullname">John Smith</span>
           <button id="logout-btn">Logout</button>
         </div>
       </div>
@@ -104,6 +104,44 @@
         <div class="dashboard-header">
           <h2>My Tasks</h2>
           <button id="add-task-btn" class="primary-btn">+ New Task</button>
+        </div>
+
+        <!-- Calendar Section -->
+        <div class="calendar-section" id="calendar-section" style="display: none;">
+          <div class="calendar-header">
+            <button id="prev-month" class="calendar-nav-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <h2 id="current-month">June 2024</h2>
+            <button id="next-month" class="calendar-nav-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+          <div class="calendar-grid">
+            <div class="calendar-weekdays">
+              <div>Sun</div>
+              <div>Mon</div>
+              <div>Tue</div>
+              <div>Wed</div>
+              <div>Thu</div>
+              <div>Fri</div>
+              <div>Sat</div>
+            </div>
+            <div class="calendar-days" id="calendar-days">
+              <!-- Days will be populated by JavaScript -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Task Preview Modal -->
+        <div class="modal" id="task-preview-modal">
+          <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2 id="preview-date">Tasks for June 15, 2024</h2>
+            <div class="preview-tasks" id="preview-tasks">
+              <!-- Tasks will be populated by JavaScript -->
+            </div>
+          </div>
         </div>
 
         <div class="task-summary">
@@ -192,3 +230,4 @@
   <script src="script.js"></script>
 </body>
 </html>
+
