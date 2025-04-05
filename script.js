@@ -19,6 +19,20 @@ const pendingCountEl = document.getElementById('pending-count');
 const completedCountEl = document.getElementById('completed-count');
 const totalCountEl = document.getElementById('total-count');
 
+// Calendar functionality
+let currentDate = new Date();
+let selectedDate = new Date();
+
+// Calendar DOM Elements
+const calendarSection = document.getElementById('calendar-section');
+const calendarDays = document.getElementById('calendar-days');
+const currentMonthEl = document.getElementById('current-month');
+const prevMonthBtn = document.getElementById('prev-month');
+const nextMonthBtn = document.getElementById('next-month');
+const taskPreviewModal = document.getElementById('task-preview-modal');
+const previewDateEl = document.getElementById('preview-date');
+const previewTasksEl = document.getElementById('preview-tasks');
+
 // State
 let tasks = JSON.parse(localStorage.getItem('tasks')) || [
   {
@@ -61,13 +75,45 @@ let currentFilter = {
 };
 let editingTaskId = null;
 
+// User management
+let currentUser = null;
+
+// Function to get initials from a name
+function getInitials(name) {
+    return name
+        .split(' ')
+        .map(word => word[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+}
+
+// Function to update user profile display
+function updateUserProfile(username) {
+    currentUser = username;
+    const userAvatar = document.getElementById('user-avatar');
+    const userFullname = document.getElementById('user-fullname');
+    
+    // Update avatar with initials
+    userAvatar.textContent = getInitials(username);
+    
+    // Update full name
+    userFullname.textContent = username;
+}
+
 // Initialize App
 function init() {
   // Check if user is logged in
   const isLoggedIn = localStorage.getItem('isLoggedIn');
+  const rememberedUsername = localStorage.getItem('rememberedUsername');
   
   if (isLoggedIn) {
+    if (rememberedUsername) {
+      document.getElementById('username').value = rememberedUsername;
+      document.getElementById('remember').checked = true;
+    }
     showApp();
+    updateUserProfile(rememberedUsername || 'User');
   } else {
     showLogin();
   }
@@ -123,13 +169,19 @@ function handleLogin(e) {
   // Simple validation - in a real app, you would check against a database
   if (username && password) {
     localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('username', username);
+    if (remember) {
+      localStorage.setItem('rememberedUsername', username);
+    } else {
+      localStorage.removeItem('rememberedUsername');
+    }
+    updateUserProfile(username);
     showApp();
   }
 }
 
 function handleLogout() {
   localStorage.removeItem('isLoggedIn');
+  // Don't remove rememberedUsername to keep the remember me functionality
   showLogin();
 }
 
@@ -397,8 +449,172 @@ function formatDateForInput(date) {
   return `${year}-${month}-${day}`;
 }
 
-// Initialize the app
+// Navigation event listeners
+document.querySelector('nav ul').addEventListener('click', (e) => {
+  if (e.target.tagName === 'A') {
+    e.preventDefault();
+    
+    // Remove active class from all navigation links
+    document.querySelectorAll('nav ul li a').forEach(link => {
+      link.classList.remove('active');
+    });
+    
+    // Add active class to clicked link
+    e.target.classList.add('active');
+    
+    if (e.target.textContent === 'Calendar') {
+      showCalendar();
+    } else if (e.target.textContent === 'Dashboard') {
+      showDashboard();
+    }
+  }
+});
+
+// Function to show dashboard
+function showDashboard() {
+  calendarSection.style.display = 'none';
+  document.querySelector('.task-summary').style.display = 'grid';
+  document.querySelector('.tasks-container').style.display = 'grid';
+}
+
+// Function to show calendar
+function showCalendar() {
+  document.querySelector('.task-summary').style.display = 'none';
+  document.querySelector('.tasks-container').style.display = 'none';
+  calendarSection.style.display = 'block';
+  renderCalendar();
+}
+
+prevMonthBtn.addEventListener('click', () => {
+  currentDate.setMonth(currentDate.getMonth() - 1);
+  renderCalendar();
+});
+
+nextMonthBtn.addEventListener('click', () => {
+  currentDate.setMonth(currentDate.getMonth() + 1);
+  renderCalendar();
+});
+
+function renderCalendar() {
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  
+  // Update month display
+  currentMonthEl.textContent = new Date(year, month).toLocaleDateString('en-US', { 
+    month: 'long', 
+    year: 'numeric' 
+  });
+  
+  // Get first day of month and total days
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const totalDays = lastDay.getDate();
+  
+  // Clear previous calendar
+  calendarDays.innerHTML = '';
+  
+  // Add empty cells for days before first day of month
+  for (let i = 0; i < firstDay.getDay(); i++) {
+    const emptyDay = document.createElement('div');
+    emptyDay.className = 'calendar-day other-month';
+    calendarDays.appendChild(emptyDay);
+  }
+  
+  // Add days of the month
+  for (let day = 1; day <= totalDays; day++) {
+    const dayElement = document.createElement('div');
+    dayElement.className = 'calendar-day';
+    dayElement.textContent = day;
+    
+    // Check if day has tasks
+    const date = new Date(year, month, day);
+    const tasksForDay = tasks.filter(task => {
+      const taskDate = new Date(task.dueDate);
+      return taskDate.toDateString() === date.toDateString();
+    });
+    
+    if (tasksForDay.length > 0) {
+      dayElement.classList.add('has-tasks');
+      dayElement.setAttribute('data-task-count', tasksForDay.length);
+    }
+    
+    // Highlight today
+    if (isToday(date)) {
+      dayElement.classList.add('today');
+    }
+    
+    // Highlight selected date
+    if (isSameDay(date, selectedDate)) {
+      dayElement.classList.add('selected');
+    }
+    
+    // Add click event to show tasks
+    dayElement.addEventListener('click', () => {
+      selectedDate = date;
+      showTasksForDate(date);
+      renderCalendar(); // Re-render to update selection
+    });
+    
+    calendarDays.appendChild(dayElement);
+  }
+}
+
+function isToday(date) {
+  const today = new Date();
+  return date.toDateString() === today.toDateString();
+}
+
+function isSameDay(date1, date2) {
+  return date1.toDateString() === date2.toDateString();
+}
+
+function showTasksForDate(date) {
+  const tasksForDate = tasks.filter(task => {
+    const taskDate = new Date(task.dueDate);
+    return taskDate.toDateString() === date.toDateString();
+  });
+  
+  previewDateEl.textContent = `Tasks for ${date.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  })}`;
+  
+  previewTasksEl.innerHTML = '';
+  
+  if (tasksForDate.length === 0) {
+    previewTasksEl.innerHTML = '<p class="no-tasks">No tasks scheduled for this day.</p>';
+  } else {
+    tasksForDate.forEach(task => {
+      const taskElement = document.createElement('div');
+      taskElement.className = 'preview-task-item';
+      taskElement.innerHTML = `
+        <div class="preview-task-status ${task.completed ? 'completed' : 'pending'}"></div>
+        <div class="preview-task-content">
+          <h4>${task.title}</h4>
+          <p>${task.description}</p>
+        </div>
+      `;
+      previewTasksEl.appendChild(taskElement);
+    });
+  }
+  
+  taskPreviewModal.style.display = 'flex';
+}
+
+// Close task preview modal
+document.querySelector('#task-preview-modal .close-modal').addEventListener('click', () => {
+  taskPreviewModal.style.display = 'none';
+});
+
+// Initialize calendar when app starts
 document.addEventListener('DOMContentLoaded', () => {
   init();
   renderCategories();
+  
+  // Add calendar initialization
+  if (window.location.hash === '#calendar') {
+    showCalendar();
+  }
 });
